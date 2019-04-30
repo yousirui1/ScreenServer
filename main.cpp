@@ -12,6 +12,7 @@ extern "C"
     #include "libavformat/avformat.h"
     #include "libswscale/swscale.h"
     #include "libavdevice/avdevice.h"
+    #include "libavutil/imgutils.h"
 }
 #define DATA_SIZE 1452
 #define min(a,b) a>b?b:a;
@@ -109,7 +110,7 @@ int create_sock()
 
     recv_addr.sin_family = AF_INET;
     recv_addr.sin_addr.s_addr = htonl (INADDR_ANY);
-    recv_addr.sin_port = htons(7838);
+    recv_addr.sin_port = htons(9999);
 
 
     /* 绑定自己的端口和IP信息到socket上 */
@@ -124,12 +125,12 @@ int create_sock()
 int init_ffmpeg()
 {
     AVFormatContext	*pFormatCtx;
-    int				i, videoindex;
+    int				i, videoindex, ret, got_picture;
     AVCodecContext	*pCodecCtx;
     AVCodec			*pCodec;
     AVCodecContext	*pH264CodecCtx;
     AVCodec			*pH264Codec;
-    av_register_all();
+
     avformat_network_init();
     avdevice_register_all();//Register Device
     pFormatCtx = avformat_alloc_context();
@@ -188,10 +189,9 @@ int init_ffmpeg()
 
     uint8_t *out_buffer=(uint8_t *)av_malloc(avpicture_get_size(AV_PIX_FMT_YUV420P, pCodecCtx->width, pCodecCtx->height));
     avpicture_fill((AVPicture *)pFrameYUV, out_buffer, AV_PIX_FMT_YUV420P, pCodecCtx->width, pCodecCtx->height);
-    int ret, got_picture;
+
     AVPacket *packet=(AVPacket *)av_malloc(sizeof(AVPacket));
-    AVPacket *packetH264=(AVPacket *)av_malloc(sizeof(AVPacket));
-    FILE *fp_h264=fopen("c://h264//intput.h264","wb");
+
     struct SwsContext *img_convert_ctx;
     img_convert_ctx = sws_getContext(pCodecCtx->width, pCodecCtx->height, pCodecCtx->pix_fmt, pCodecCtx->width, pCodecCtx->height, AV_PIX_FMT_YUV420P, SWS_BICUBIC, NULL, NULL, NULL);
     ///这里打印出视频的宽高
@@ -229,11 +229,11 @@ int init_ffmpeg()
     pH264CodecCtx->time_base.num = 1;
     pH264CodecCtx->time_base.den = 25;//帧率(既一秒钟多少张图片)
     pH264CodecCtx->bit_rate = bps; //比特率(调节这个大小可以改变编码后视频的质量)
-    pH264CodecCtx->gop_size= 12;
+    pH264CodecCtx->gop_size= 15;      //多少packet 一个I帧
     //H264 还可以设置很多参数 自行研究吧
     pH264CodecCtx->qmin = 10;
     pH264CodecCtx->qmax = 51;
-    pH264CodecCtx->max_b_frames = 0;
+    pH264CodecCtx->max_b_frames = 5;
     // some formats want stream headers to be separate
     if (pH264CodecCtx->flags & AVFMT_GLOBALHEADER)
         pH264CodecCtx->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
@@ -246,6 +246,7 @@ int init_ffmpeg()
         printf("Failed to open video encoder1! 编码器打开失败！\n");
         return false;
     }
+    FILE *fp = fopen("c://h264/1.h264", "wb");
     for(;;)
     {
         //读取截屏中的数据--->packet
@@ -253,6 +254,7 @@ int init_ffmpeg()
         {
             break;
         }
+
         if(packet->stream_index==videoindex)
         {
             ret = avcodec_decode_video2(pCodecCtx, pFrame, &got_picture, packet);
@@ -270,18 +272,19 @@ int init_ffmpeg()
                     printf("Failed to encode! \n");
                     return -1;
                 }
-                h264_send_data((char *)packet->data, packet->size);
+                //h264_send_data((char *)packet->data, packet->size);
+                fwrite(packet->data, 4, packet->size, fp);
             }
         }
-        av_free_packet(packet);
+        av_packet_unref(packet);
 
         if(!run_flag)
         {
             break;
         }
+
     }
     sws_freeContext(img_convert_ctx);
-    fclose(fp_h264);
     av_free(out_buffer);
     av_free(pFrameYUV);
     avcodec_close(pCodecCtx);

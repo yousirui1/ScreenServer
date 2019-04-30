@@ -29,19 +29,18 @@ unix{
 
 #######################window##################################
 win32{
+INCLUDEPATH += -I ./ffmpeg/include
 
-INCLUDEPATH += -I ./include/ffmpeg
-
-LIBS += $$PWD/lib/ffmpeg/win/libavcodec.dll.a \
-        $$PWD/lib/ffmpeg/win/libavdevice.dll.a \
-        $$PWD/lib/ffmpeg/win/libavfilter.dll.a \
-        $$PWD/lib/ffmpeg/win/libavformat.dll.a \
-        $$PWD/lib/ffmpeg/win/libavutil.dll.a \
-        $$PWD/lib/ffmpeg/win/libpostproc.dll.a \
-        $$PWD/lib/ffmpeg/win/libswresample.dll.a \
-        $$PWD/lib/ffmpeg/win/libswscale.dll.a -lws2_32
+LIBS += $$PWD/ffmpeg/lib/win/libavcodec.dll.a \
+        $$PWD/ffmpeg/lib/win/libavdevice.dll.a \
+        $$PWD/ffmpeg/lib/win/libavfilter.dll.a \
+        $$PWD/ffmpeg/lib/win/libavformat.dll.a \
+        $$PWD/ffmpeg/lib/win/libavutil.dll.a \
+        $$PWD/ffmpeg/lib/win/libpostproc.dll.a \
+        $$PWD/ffmpeg/lib/win/libswresample.dll.a \
+        $$PWD/ffmpeg/lib/win/libswscale.dll.a -lws2_32
 }
-################################################################s
+################################################################
 
 
 SOURCES += \
